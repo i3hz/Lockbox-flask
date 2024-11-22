@@ -124,17 +124,21 @@ def retrieve_password():
     
     passwords = []
     if request.method == 'POST':
+        # Get inputs from the form
         service_name = request.form.get('service_name')
-        
-        # If service name is provided, filter by it
-        if service_name:
-            entries = PasswordEntry.query.filter(
-                PasswordEntry.service_name.ilike(f'%{service_name}%')
-            ).all()
-        else:
-            # If no service name, get all entries
-            entries = PasswordEntry.query.all()
-            
+        entered_master_password = request.form.get('master_password')
+
+        # Verify master password
+        master_password_entry = MasterPassword.query.first()
+        if not master_password_entry or not checkpw(entered_master_password.encode(), master_password_entry.password_hash.encode()):
+            flash('Master password is incorrect!', 'error')
+            return redirect(url_for('retrieve_password'))
+
+        # Fetch and decrypt passwords
+        entries = PasswordEntry.query.filter(
+            PasswordEntry.service_name.ilike(f'%{service_name}%')
+        ).all() if service_name else PasswordEntry.query.all()
+
         if not entries:
             flash(f'No passwords found{"" if not service_name else f" for {service_name}"}!', 'error')
         else:
